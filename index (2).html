@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Research Study</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eef2f4;--card:#fff;--ink:#16242c;--mute:#5b6b74;--accent:#1e5c7b;--line:#cbd5db}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:18px/1.55 "Atkinson Hyperlegible",system-ui,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px}
+main{width:100%;max-width:620px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:32px}
+h1{font-size:1.5rem;line-height:1.25;margin:0 0 12px}
+p{margin:0 0 16px}.mute{color:var(--mute);font-size:.9rem}
+label{display:block;font-weight:700;margin:16px 0 6px}
+input,select{width:100%;font:inherit;padding:12px;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--ink)}
+button{font:inherit;cursor:pointer;border-radius:6px}
+.next{margin-top:24px;background:var(--accent);color:#fff;border:0;padding:13px 28px;font-weight:700}
+.next:disabled{background:#9db3bf;cursor:not-allowed}
+.opt{display:block;width:100%;text-align:left;margin:0 0 10px;padding:14px;border:1px solid var(--line);background:#fff;color:var(--ink)}
+.opt.sel{border-color:var(--accent);background:var(--accent);color:#fff}
+.two{display:flex;gap:12px}.two .opt{text-align:center;font-weight:700;font-size:1.2rem}
+:focus-visible{outline:3px solid #e0a100;outline-offset:2px}
+.bar{height:6px;background:var(--line);border-radius:3px;margin-bottom:24px}.bar i{display:block;height:100%;background:var(--accent);border-radius:3px}
+.q{font-size:1.35rem;font-weight:700;margin:0 0 20px}
+.slide{text-align:center}.slide img,.ph{max-width:100%;max-height:60vh;border-radius:6px}
+.ph{display:flex;align-items:center;justify-content:center;height:40vh;background:var(--bg);color:var(--mute)}
+.words{columns:2;column-gap:32px;text-align:center;font-size:1.5rem;font-weight:700;padding:4vh 0}.words div{break-inside:avoid;padding:3px 0}
+ol{margin:0 0 16px;padding-left:22px}
+.row{display:flex;align-items:center;gap:12px;margin:0 0 10px}.row span{flex:1}.row input{width:120px}
+.timer{font-weight:700;color:var(--accent)}
+.err{color:#a3261b;font-weight:700}
+</style></head><body><main id="app"></main>
+<script>
+/* ===== EDIT THIS SECTION ===== */
+const CONFIG = {
+  SCRIPT_URL: "PASTE_YOUR_WEB_APP_URL_HERE",   // from SETUP.md step 3
+  SECONDS_PER_PHOTO: 10,
+  PHOTO_COUNT: 10,          // photos per group: Positive/1.jpg ... and Neutral/1.jpg ...
+  SECONDS_PER_LIST: 15,     // each word list stays on screen this long
+  PHOTO_EXT: ".jpeg",       // must match your files exactly: ".jpeg", ".jpg" or ".png"
+  MATHS_SECONDS: 120
+};
+const GROUPS = {1:{name:"Group 1 - Positive", folder:"Positive"}, 2:{name:"Group 2 - Neutral", folder:"Neutral"}};
+const PANAS_SCALE = ["Very slightly or not at all","A little","Moderately","Quite a bit","Extremely"];
+const PANAS_ITEMS = ["Interested","Distressed","Excited","Upset","Strong","Guilty","Scared","Hostile","Enthusiastic","Proud","Irritable","Alert","Ashamed","Inspired","Nervous","Determined","Attentive","Jittery","Active","Afraid"];
+const REF_PA = "(norm mean 33.3, SD 7.2)", REF_NA = "(norm mean 17.4, SD 6.2)";   // shown in the sheet headings
+const PANAS_TEXT = "Read each word and indicate to what extent you feel this way right now, that is, at the present moment.";
+const LISTS = [
+ "Mad,Fear,Hate,Rage,Temper,Fury,Ire,Wrath,Happy,Fight,Hatred,Mean,Calm,Emotion,Enrage",
+ "Butter,Food,Eat,Sandwich,Rye,Jam,Milk,Flour,Jelly,Dough,Crust,Slice,Wine,Loaf,Toast",
+ "Sit,Legs,Seat,Couch,Desk,Recliner,Sofa,Wood,Cushion,Swivel,Stool,Bench",
+ "Hot,Snow,Warm,Winter,Ice,Wet,Frigid,Chilly,Heat,Weather,Freeze,Air,Shiver,Arctic,Frost",
+ "Mug,Saucer,Tea,Measuring,Coaster,Lid,Handle,Coffee,Straw,Goblet,Stein,Drink,Plastic,Sip",
+ "Nurse,Sick,Lawyer,Medicine,Health,Hospital,Dentist,Physician,Ill,Patient,Office,Stethoscope,Surgeon,Clinic,Cure",
+ "Low,Cloud,Up,Tall,Lower,Jump,Above,Building,Noon,Cliff,Sky,Over,Airplane,Dive,Elevate",
+ "Peace,Law,Courts,Judge,Right,Liberty,Government,Jury,Truth,Blind,Fair,Supreme,Crime,Department,Trial",
+ "Hill,Valley,Climb,Summit,Top,Molehill,Peak,Plain,Glacier,Goat,Bike,Climber,Range,Steep,Ski",
+ "Note,Sound,Piano,Sing,Radio,Band,Melody,Horn,Concert,Instrument,Symphony,Jazz,Orchestra,Art,Rhythm",
+ "Thread,Pin,Eye,Sewing,Sharp,Point,Prick,Thimble,Haystack,Thorn,Hurt,Injection,Syringe,Cloth,Knitting",
+ "Smooth,Bumpy,Road,Tough,Sandpaper,Jagged,Ready,Coarse,Uneven,Riders,Rugged,Sand,Boards,Ground,Gravel",
+ "Bed,Rest,Awake,Tired,Dream,Wake,Snooze,Blanket,Doze,Slumber,Snore,Nap,Peace,Yawn,Drowsy",
+ "Cigarette,Puff,Blaze,Billows,Pollution,Ashes,Cigar,Chimney,Fire,Tobacco,Stink,Pipe,Lungs,Flames,Stain",
+ "Light,Pillow,Plush,Loud,Cotton,Fur,Touch,Fluffy,Feather,Furry,Downy,Kitten,Skin,Tender",
+ "Sour,Candy,Sugar,Bitter,Good,Taste,Tooth,Nice,Honey,Soda,Chocolate,Heart,Cake,Tart,Pie",
+ "Steal,Robber,Burglar,Cop,Rob,Jail,Villain,Crime,Bank,Bandit,Criminal",
+ "Bad,Shooter,Worry,Danger,Sorrow,Fear,School,Problem,Police,Fight,Sad,Difficulty,Help,Maker,Jail",
+ "Door,Glass,Pane,Shade,Ledge,Sill,House,Open,Curtain,Frame,View,Breeze,Sash,Screen,Shutter",
+ "Want,Dream,Desire,Hope,Well,Think,Star,Bone,Ring,Wash,Thought,Get,True,For,Money"
+];
+const MATHS = [["14 + 27",41],["83 - 19",64],["6 x 7",42],["105 / 5",21],["42 + 58",100],["91 - 34",57],["8 x 9",72],["144 / 12",12],["37 + 46",83],["62 - 28",34]];
+const CHECK = "Mad,Chair,Telescope,Butter,Cold,Sit,Envelope,Hot,Cup,Mug,Doctor,Bicycle,Nurse,High,Low,Justice,Peace,Hammer,Hill,Mountain,Note,Music,Elephant,Thread,Needle,Smooth,Rough,Blanket,Bed,Sleep,Cigarette,Smoke,Pillow,Soft,Sour,Sweet,Steal,Thief,Bad,Trouble,Door,Window,Want,Wish,Bread,Anger,Compass,Umbrella,Submarine,Calendar".split(",");
+const KEY = { // item numbers from the worksheet answer key
+  studied:[1,4,6,8,10,13,15,17,19,21,24,26,28,29,31,33,35,37,39,41,43],
+  lures:[2,5,9,11,14,16,20,22,25,27,30,32,34,36,38,40,42,44,45,46],
+  unrelated:[3,7,12,18,23,47,48,49,50] };
+/* ===== END EDIT SECTION ===== */
+
+const app = document.getElementById("app");
+const D = {group:null, details:{}, sections:[], score:{}};
+const ORDER = ["group","consent","details","panas_pre","photos","panas_post","words","maths","check"];
+let step = 0;
+const next = () => { step++; run(); };
+function run(){ if (step >= ORDER.length) return send(); ({group,consent,details,panas_pre:()=>panas("pre"),photos,panas_post:()=>panas("post"),words,maths,check})[ORDER[step]](); }
+function intro(h, text, fn){ app.innerHTML = `<h1>${h}</h1><p>${text}</p><button class="next" id="go">Start</button>`; document.getElementById("go").onclick = fn; }
+
+function group(){
+  app.innerHTML = `<h1>For the researcher</h1><p>Select the group, then hand the device to the participant.</p>` +
+    Object.keys(GROUPS).map(k=>`<button class="opt" data-g="${k}">${GROUPS[k].name}</button>`).join("");
+  app.querySelectorAll(".opt").forEach(b => b.onclick = () => { D.group = +b.dataset.g; next(); });
+}
+function consent(){
+  app.innerHTML = `<h1>Participant information and consent</h1>
+  <p>Dear Participant,</p>
+  <p>We are master’s students from the Department of Psychology, University of Delhi, conducting an academic research study to understand how positive affect affects the false memory of an individual.</p>
+  <p>The questionnaire would take approximately 15–20 minutes.</p>
+  <p>Your participation is entirely voluntary. You may choose not to participate or withdraw from the questionnaire at any time before submitting your responses, without any penalty.</p>
+  <p>Your responses will be treated confidentially and used solely for academic research purposes.</p>
+  <p>There are no anticipated significant risks associated with participation. Some questions may encourage reflection on your personal experiences and feelings. You may discontinue the questionnaire if you feel uncomfortable.</p>
+  <p>By selecting “I agree to participate”, you confirm that:</p>
+  <ol><li>You are 18 years of age or older.</li><li>You have read and understood the information provided above.</li><li>You voluntarily agree to participate in this research.</li></ol>
+  <button class="next" id="go">I agree to participate</button>`;
+  document.getElementById("go").onclick = next;
+}
+function details(){
+  app.innerHTML = `<h1>Your details</h1><p>Please enter your details.</p>
+  <label for="n">Name</label><input id="n" autocomplete="off">
+  <label for="a">Age</label><input id="a" type="number" min="1" max="120" inputmode="numeric">
+  <label for="x">Sex</label><select id="x"><option value="">Choose one</option><option>Female</option><option>Male</option><option>Other</option><option>Prefer not to say</option></select>
+  <p class="err" id="e"></p><button class="next" id="go">Continue</button>`;
+  document.getElementById("go").onclick = () => {
+    const d = {name:n.value.trim(), age:a.value, sex:x.value};
+    if (!d.name || !d.age || d.age<1 || d.age>120 || !d.sex){ e.textContent="Please fill in all three fields."; return; }
+    D.details = d; next();
+  };
+}
+function ask(o, i, vals, done){
+  if (i >= o.items.length) return done(vals);
+  app.innerHTML = `<div class="bar"><i style="width:${i/o.items.length*100}%"></i></div><p class="mute">${i+1} of ${o.items.length}</p><p class="q">${o.items[i]}</p>` +
+    `<div class="${o.auto?"two":""}">` + o.scale.map((t,k)=>`<button class="opt" data-v="${o.vals?o.vals[k]:k+1}">${t}</button>`).join("") + `</div>` +
+    (o.auto ? "" : `<button class="next" id="nx" disabled>Next</button>`);
+  let pick = null;
+  app.querySelectorAll(".opt").forEach(b => b.onclick = () => {
+    pick = o.vals ? b.dataset.v : +b.dataset.v;
+    if (o.auto) return ask(o, i+1, vals.concat(pick), done);
+    app.querySelectorAll(".opt").forEach(x=>x.classList.remove("sel")); b.classList.add("sel");
+    document.getElementById("nx").disabled = false;
+    document.getElementById("nx").onclick = () => ask(o, i+1, vals.concat(pick), done);
+  });
+}
+const sum = (v, idx) => idx.reduce((t,n) => t + v[n-1], 0);
+function panas(when){
+  intro("How are you feeling?", PANAS_TEXT, () => ask({items:PANAS_ITEMS, scale:PANAS_SCALE}, 0, [], v => {
+    const pa = sum(v,[1,3,5,9,10,12,14,16,17,19]), na = sum(v,[2,4,6,7,8,11,13,15,18,20]);
+    D.sections.push({title:"PANAS "+(when==="pre"?"before":"after"), labels:PANAS_ITEMS.concat(["Positive affect (PA) "+REF_PA,"Negative affect (NA) "+REF_NA]), values:v.concat([pa,na])});
+    D.score[when] = [pa,na]; next();
+  }));
+}
+function photos(){
+  const dir = GROUPS[D.group].folder + "/";
+  const urls = Array.from({length:CONFIG.PHOTO_COUNT}, (_,i) => `${dir}${i+1}${CONFIG.PHOTO_EXT}`);
+  // Start loading every photo now, while the participant reads the instructions, so none appears late.
+  const loaded = Promise.race([
+    Promise.all(urls.map(u => new Promise(res => { const im = new Image(); im.onload = im.onerror = res; im.src = u; }))),
+    new Promise(res => setTimeout(res, 20000))
+  ]);
+  function show(i){
+    if (i >= urls.length) return next();
+    app.innerHTML = `<div class="slide"><img id="im" alt="" src="${urls[i]}"></div>`;
+    document.getElementById("im").onerror = function(){ this.outerHTML = `<div class="ph">Photo ${i+1} (placeholder)</div>`; };
+    setTimeout(() => show(i+1), CONFIG.SECONDS_PER_PHOTO*1000);
+  }
+  intro("Please look at the following photos", "Each photo appears for a few seconds. Nothing to click.", () => {
+    app.innerHTML = `<p>Loading…</p>`;
+    loaded.then(() => show(0));
+  });
+}
+function words(){
+  intro("Word lists", "You will now see lists of words. Each list stays on the screen for a short time. Try to remember the words, because your memory will be tested afterwards.", () => (function show(i){
+    if (i >= LISTS.length) return next();
+    app.innerHTML = `<div class="words">${LISTS[i].split(",").map(w=>`<div>${w}</div>`).join("")}</div>`;
+    setTimeout(() => show(i+1), CONFIG.SECONDS_PER_LIST*1000);
+  })(0));
+}
+function maths(){
+  intro("Cognitive task", `Solve as many of these problems as you can in ${CONFIG.MATHS_SECONDS/60} minutes. Type each answer in its box.`, () => {
+    app.innerHTML = `<p class="timer" id="t"></p>` + MATHS.map((m,i)=>`<div class="row"><span>${i+1}. ${m[0]} =</span><input type="number" inputmode="numeric" id="m${i}"></div>`).join("") + `<button class="next" id="dn">Done</button>`;
+    let left = CONFIG.MATHS_SECONDS, over = false;
+    const finish = () => {
+      if (over) return; over = true; clearInterval(iv);
+      const ans = MATHS.map((m,i)=>document.getElementById("m"+i).value.trim());
+      const attempted = ans.filter(x=>x!=="").length, correct = ans.filter((x,i)=>x!=="" && +x===MATHS[i][1]).length;
+      D.sections.push({title:"Cognitive task", labels:MATHS.map((m,i)=>`${i+1}. ${m[0]}`).concat(["Attempted","Correct (of "+MATHS.length+")"]), values:ans.concat([attempted,correct])});
+      D.score.maths = correct; next();
+    };
+    const tick = () => { t.textContent = "Time left: " + Math.floor(left/60) + ":" + String(left%60).padStart(2,"0"); if (left-- <= 0) finish(); };
+    const iv = setInterval(tick, 1000); tick();
+    document.getElementById("dn").onclick = finish;
+  });
+}
+function check(){
+  intro("Memory test", "You will see words one at a time. Was the word on one of the lists you saw earlier? Choose OLD if you remember it, or NEW if you do not.", () =>
+    ask({items:CHECK, scale:["OLD","NEW"], vals:["OLD","NEW"], auto:true}, 0, [], v => {
+      const rate = k => Math.round(KEY[k].filter(n=>v[n-1]==="OLD").length / KEY[k].length * 1000) / 10;
+      const hit = rate("studied"), lure = rate("lures"), fa = rate("unrelated"), corr = Math.round((lure-fa)*10)/10;
+      D.sections.push({title:"Checklist", labels:CHECK.map((w,i)=>`${i+1} ${w}`).concat(["Studied words recognised (%)","Critical lures falsely recognised (%)","Unrelated words falsely recognised (%)","Corrected false memory (%)"]), values:v.concat([hit,lure,fa,corr])});
+      D.score.check = [hit,lure,fa,corr]; next();
+    }));
+}
+function send(){
+  app.innerHTML = `<h1>Saving your answers…</h1>`;
+  const s = D.score;
+  const summary = {
+    labels:["PANAS before - PA "+REF_PA,"PANAS before - NA "+REF_NA,"PANAS after - PA "+REF_PA,"PANAS after - NA "+REF_NA,"Cognitive task correct","Studied words recognised (%)","Critical lures falsely recognised (%)","Unrelated words falsely recognised (%)","Corrected false memory (%)"],
+    values:[].concat(s.pre, s.post, [s.maths], s.check) };
+  fetch(CONFIG.SCRIPT_URL, {method:"POST", mode:"no-cors", body:JSON.stringify({...D.details, group:GROUPS[D.group].name, summary, sections:D.sections})})
+    .then(()=>{ app.innerHTML = `<h1>Thank you</h1><p>Your answers have been saved. You can close this page.</p>`; })
+    .catch(()=>{ app.innerHTML = `<h1>Could not save</h1><p class="err">Check your internet connection and try again.</p><button class="next" id="r">Try again</button>`; document.getElementById("r").onclick = send; });
+}
+run();
+</script></body></html>
